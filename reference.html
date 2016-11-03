@@ -1,0 +1,88 @@
+<!DOCTYPE HTML>
+
+<html>
+   <head>
+      <title>Cannon - API reference</title>
+      <style>
+         body {
+            background-color: black;
+            color: white;
+            font-family: Consolas, Monospace;
+            text-align: justify;
+         }
+
+         #wrapper {
+            width: 50%;
+            margin: auto;
+         }
+
+         #wrapper a { color: white; }
+         .ref-title { color: #7fff3f; }
+         .ref-body { color: #808080; }
+
+         #wrapper p { margin-top: 0; }
+         .ref-header { margin-bottom: 0; }
+      </style>
+   </head>
+
+   <body>
+      <div id="wrapper">
+         <h1>Cannon API reference (incomplete)</h1>
+         <h2 class="ref-header">Methods:</h2>
+         <p id="shoot">
+            <span class="ref-title">this.shoot(): </span>
+            <span class="ref-body">shoots the cannon; it works only if the cannon
+            is ready; you can check that programmatically via the
+            <a href="#ready">this.ready()</a> function.</span>
+         </p>
+
+         <p id="get-cannon-angle">
+            <span class="ref-title">this.getCannonAngle(): </span>
+            <span class="ref-body">returns current cannon angle, in radians; 0 means
+            horizontal and Math.PI/2 means vertical (note that cannon angle has
+            a maximum and a minimum, see more <a href="#const">here</a>).</span>
+         </p>
+
+         <p id="set-cannon-angle">
+            <span class="ref-title">this.setCannonAngle(A): </span>
+            <span class="ref-body">tells the cannon to move to angle A, given in radians
+            (0 means horizontal, Math.PI/2 means vertical - note that cannon angle has
+            a maximum and a minimum, see more <a href="#const">here</a>).</span>
+         </p>
+
+         <p id="get-enemies">
+            <span class="ref-title">this.getEnemies(): </span>
+            <span class="ref-body">returns the current alive enemies as an array;
+            each element of the array contains the x coordinate of correspondant enemy,
+            in pixels; the array is sorted in ascending order, so that the first element
+            is the closest enemy.</span>
+         </p>
+
+         <p id="ready">
+            <span class="ref-title">this.ready(): </span>
+            <span class="ref-body">returns 1 if the cannon is ready to shoot, 0 otherwise.</span>
+         </p>
+
+         <h2 class="ref-header" id="const">Constants:</h2>
+         <p id="cannon-shoot-speed">
+            <span class="ref-title">cannonShootSpeed: </span>
+            <span class="ref-body"></span>
+         </p>
+
+         <p id="cannon-x">
+            <span class="ref-title">cannonX: </span>
+            <span class="ref-body"></span>
+         </p>
+
+         <p id="cannon-r">
+            <span class="ref-title">cannonR: </span>
+            <span class="ref-body"></span>
+         </p>
+
+         <p id="cannon-l">
+            <span class="ref-title">cannonL: </span>
+            <span class="ref-body"></span>
+         </p>
+      </div>
+   </body>
+</html>

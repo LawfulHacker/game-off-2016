@@ -11,6 +11,7 @@ var levelY = 0; // Level base y
 
 const cannonR = 20; // Cannon base radius
 const cannonL = 20; // Cannon length
+const cannonX = 20; // Cannon X coordinate
 const cannonSpeed = (Math.PI / 2); // Cannon rotation speed
 const cannonShootSpeed = 175; // Bullet (initial) speed
 
@@ -36,6 +37,8 @@ var spawnChance = function ( t ) {
 
 const gameSpeed = 2;
 var pause = 0; // 1 = play, 0 = pause
+
+const frameTime = gameSpeed / fps;
 
 function gradientCol ( a, b, k ) {
    var ar = parseInt ( a.substr(1,2), 16 );
@@ -63,10 +66,10 @@ var setup = function () {
    context = canvas.getContext("2d");
    context.lineJoin = "round";
 
-   if ( localStorage.controller )
+   if ( localStorage.controller != undefined )
       document.getElementById("code").innerText = localStorage.controller;
 
-   codeMirror = CodeMirror.fromTextArea(document.getElementById("code"));
+   codeMirror = CodeMirror.fromTextArea(document.getElementById("code"), { lineNumbers: true } );
 
    levelY = 7 * canvas.height / 8;
 
@@ -116,7 +119,7 @@ var update = function () {
 }
 
 var Level = function () {
-   this.cannonAngle = 0;
+   this.cannonAngle = -Math.PI / 4;
    this.targetAngle = -Math.PI / 4;
    this.cannonHP = 10;
    this.cannonMaxHP = 10;
@@ -134,15 +137,16 @@ var Level = function () {
    this.draw = function ( context ) {
       var R = cannonShootSpeed * cannonShootSpeed / g;
       var r = cannonShootSpeed * cannonShootSpeed / g * Math.sin ( 2 * cannonMinAngle );
+      var col = gradientCol ( gfx_lvlColor_alive, gfx_lvlColor_dead, this.cannonHP / this.cannonMaxHP );
 
       context.fillStyle = gfx_rangeColor;
       context.beginPath();
-      context.arc ( 20 + cannonR + cannonL*1.414, levelY, R, Math.PI/2, Math.PI/4 );
+      context.arc ( cannonX + cannonR + cannonL*1.414, levelY, R, Math.PI/2, Math.PI/4 );
       context.fill();
 
       context.fillStyle = gfx_bgColor;
       context.beginPath();
-      context.arc ( 20 + cannonR + cannonL*1.414, levelY, r, Math.PI/2, Math.PI/4 );
+      context.arc ( cannonX + cannonR + cannonL*1.414, levelY, r, Math.PI/2, Math.PI/4 );
       context.fill();
 
       context.beginPath();
@@ -150,7 +154,7 @@ var Level = function () {
 
       // Cannon base
       context.lineTo ( 20, levelY );
-      context.arc ( 20 + cannonR, levelY, cannonR, Math.PI, 0 );
+      context.arc ( cannonX + cannonR, levelY, cannonR, Math.PI, 0 );
 
       // Enemies
       for ( i = 0; i < this.enemies.length; i++ ) {
@@ -171,12 +175,10 @@ var Level = function () {
       context.lineTo ( canvas.width, levelY );
 
       // Cannon
-      context.moveTo ( 20 + cannonR + cannonR * Math.cos ( this.cannonAngle ), levelY + cannonR * Math.sin ( this.cannonAngle ) );
-      context.lineTo ( 20 + cannonR + (cannonR + cannonL) * Math.cos ( this.cannonAngle ), levelY + (cannonR + cannonL) * Math.sin ( this.cannonAngle ) );
+      context.moveTo ( cannonX + cannonR + cannonR * Math.cos ( this.cannonAngle ), levelY + cannonR * Math.sin ( this.cannonAngle ) );
+      context.lineTo ( cannonX + cannonR + (cannonR + cannonL) * Math.cos ( this.cannonAngle ), levelY + (cannonR + cannonL) * Math.sin ( this.cannonAngle ) );
 
       context.lineWidth = gfx_linew;
-
-      var col = gradientCol ( gfx_lvlColor_alive, gfx_lvlColor_dead, this.cannonHP / this.cannonMaxHP );
       context.strokeStyle = col;
 
       context.stroke();
@@ -191,8 +193,8 @@ var Level = function () {
 
       // Cannon HP
       context.beginPath();
-      context.moveTo ( 24, levelY - cannonR - 10 );
-      context.lineTo ( 24 + (2 * cannonR - 8) * this.cannonHP / this.cannonMaxHP, levelY - cannonR - 10 );
+      context.moveTo ( cannonX + 4, levelY - cannonR - 10 );
+      context.lineTo ( cannonX + 4 + (2 * cannonR - 8) * this.cannonHP / this.cannonMaxHP, levelY - cannonR - 10 );
       context.stroke();
 
       // HUD
@@ -310,5 +312,4 @@ var evalContext = {
       return result;
    },
    ready: function () { return mainLevel.reload >= 1; },
-   frameTime: function () { return gameSpeed / fps; }
 }

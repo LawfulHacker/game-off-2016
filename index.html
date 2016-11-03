@@ -15,7 +15,7 @@
 
          #wrapper {
             width: 800px;
-            height: 640px;
+            height: 590px;
 
             position: absolute; margin: auto;
             top: 0; bottom: 0; right: 0; left: 0;
@@ -73,8 +73,10 @@
    <body onload="setup()">
       <div id="wrapper">
          <canvas id="canvas" width="800" height="240"></canvas>
-         <textarea id="code">// Type your code here...</textarea>
+         <textarea id="code">// Type your code here, and press apply to run it
+this.shoot();</textarea>
          <div id="buttons">
+            <a href="reference.html" class="btn" target="_blank">Reference</a>
             <span id="pause" class="btn">Play</span>
             <span id="apply" class="btn">Apply</span>
          </div>
