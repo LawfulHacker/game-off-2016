@@ -7,6 +7,8 @@ var gfx_bgColor = "#101010";
 var gfx_rangeColor = "#151515";
 var gfx_linew = 4;
 
+var gfx_enemyH = 17;
+
 var levelY = 0; // Level base y
 
 const cannonR = 20; // Cannon base radius
@@ -17,6 +19,8 @@ const cannonShootSpeed = 175; // Bullet (initial) speed
 
 const cannonMinAngle = Math.PI / 16;
 const cannonMaxAngle = Math.PI / 2 - cannonMinAngle;
+
+const cannonMaxHP = 10;
 
 var enemySpeed = 30; // Base enemy speed
 const enemySpeedVBase = 0; // Enemy speed variance
@@ -29,14 +33,34 @@ var g = 50; // Gravity
 const reloadSpeed = 0.5; // Cannon reload speed
 const boomRange = 20; // Bullet explosion range
 
-const spawnChanceBase = 0.3 / fps; // Chance of spawning an enemy every frame
-const spawnChanceMax = 0.6 / fps;
+const spawnChanceBase = 0.4 / fps; // Chance of spawning an enemy every frame
+const spawnChanceMax = 1 / fps;
 var spawnChance = function ( t ) {
    return spawnChanceBase + (1 - Math.exp(-t / 500)) * (spawnChanceMax - spawnChanceBase);
 }
 
 const gameSpeed = 2;
 var pause = 0; // 1 = play, 0 = pause
+
+function togglePause () {
+   pause = 1 - pause;
+   pauseBtn = document.getElementById("pause");
+
+   if ( pause ) pauseBtn.innerText = "Pause";
+   else pauseBtn.innerText = "Play";
+}
+
+function unpauseGame () {
+   pause = 1;
+   pauseBtn = document.getElementById("pause");
+   pauseBtn.innerText = "Pause";
+}
+
+function pauseGame () {
+   pause = 0;
+   pauseBtn = document.getElementById("pause");
+   pauseBtn.innerText = "Play";
+}
 
 const frameTime = gameSpeed / fps;
 
@@ -76,14 +100,10 @@ var setup = function () {
    document.getElementById("apply").onclick = function () {
       mainLevel.controller = codeMirror.doc.getValue();
       localStorage.controller = mainLevel.controller;
-      if ( !pause ) pause = 1;
+      unpauseGame();
    }
 
-   document.getElementById("pause").onclick = function () {
-      pause = !pause;
-      if ( pause ) this.innerText = "Pause";
-      else this.innerText = "Play";
-   }
+   document.getElementById("pause").onclick = togglePause;
 
    setInterval ( frame, 1000 / fps );
 }
@@ -121,8 +141,7 @@ var update = function () {
 var Level = function () {
    this.cannonAngle = -Math.PI / 4;
    this.targetAngle = -Math.PI / 4;
-   this.cannonHP = 10;
-   this.cannonMaxHP = 10;
+   this.cannonHP = cannonMaxHP;
    this.reload = 1;
 
    this.enemies = new Array();
@@ -133,11 +152,12 @@ var Level = function () {
    this.time = 0;
    this.kills = 0;
    this.shots = 0;
+   this.repairs = 0;
 
    this.draw = function ( context ) {
       var R = cannonShootSpeed * cannonShootSpeed / g;
       var r = cannonShootSpeed * cannonShootSpeed / g * Math.sin ( 2 * cannonMinAngle );
-      var col = gradientCol ( gfx_lvlColor_alive, gfx_lvlColor_dead, this.cannonHP / this.cannonMaxHP );
+      var col = gradientCol ( gfx_lvlColor_alive, gfx_lvlColor_dead, this.cannonHP / cannonMaxHP );
 
       context.fillStyle = gfx_rangeColor;
       context.beginPath();
@@ -161,11 +181,11 @@ var Level = function () {
          if ( i == 0 || this.enemies[i][0] - this.enemies[i-1][0] > 20 )
             context.lineTo ( this.enemies[i][0] - 10, levelY );
 
-         context.lineTo ( this.enemies[i][0], levelY - 20 );
+         context.lineTo ( this.enemies[i][0], levelY - gfx_enemyH );
 
          if ( i < this.enemies.length - 1 && this.enemies[i+1][0] - this.enemies[i][0] < 20 ) {
             var x = 0.5 * ( this.enemies[i][0] + this.enemies[i+1][0] );
-            var y = 20 - 2 * ( x - this.enemies[i][0] );
+            var y = gfx_enemyH - 2 * ( x - this.enemies[i][0] );
             context.lineTo ( x, levelY - y );
          }
          else
@@ -194,17 +214,18 @@ var Level = function () {
       // Cannon HP
       context.beginPath();
       context.moveTo ( cannonX + 4, levelY - cannonR - 10 );
-      context.lineTo ( cannonX + 4 + (2 * cannonR - 8) * this.cannonHP / this.cannonMaxHP, levelY - cannonR - 10 );
+      context.lineTo ( cannonX + 4 + (2 * cannonR - 8) * this.cannonHP / cannonMaxHP, levelY - cannonR - 10 );
       context.stroke();
 
       // HUD
       context.font = "20px Consolas";
-      context.fillText ( " Time: " + Math.floor ( this.time / gameSpeed ), 15, 28 );
-      context.fillText ( "   HP: " + this.cannonHP + "/" + this.cannonMaxHP, 15, 48 );
-      context.fillText ( "Kills: " + this.kills, 15, 68 );
+      context.fillText ( "Time:    " + Math.floor ( this.time / gameSpeed ), 10, 23 );
+      context.fillText ( "HP:      " + this.cannonHP + "/" + cannonMaxHP, 10, 43 );
+      context.fillText ( "Kills:   " + this.kills, 10, 63 );
 
       var accuracy = Math.round(this.kills / this.shots * 100)
-      context.fillText ( "Shots: " + this.shots + " (" + (this.shots != 0 ? accuracy + "%" : "-") + ")", 15, 88 );
+      context.fillText ( "Shots:   " + this.shots + " (" + (this.shots != 0 ? accuracy + "%" : "-") + ")", 10, 83 );
+      context.fillText ( "Repairs: " + this.repairs, 10, 103 );
 
       context.strokeRect ( canvas.width - 100, 17, 90, 10 );
       context.fillRect ( canvas.width - 100, 17, 90 * this.reload, 10 );
@@ -290,12 +311,32 @@ var Level = function () {
 
       else return 0;
    }
+
+   this.repair = function () {
+      if ( this.reload >= 1 ) {
+         this.cannonHP++;
+         if ( this.cannonHP > cannonMaxHP ) this.cannonHP = cannonMaxHP;
+         this.reload = 0;
+         this.repairs++;
+         return 1;
+      }
+      else return 0;
+   }
+
+   this.reset = function () {
+      this.time = 0;
+      this.shots = 0;
+      this.repairs = 0;
+      this.enemies.splice ( 0, this.enemies.length );
+      this.projectiles.splice ( 0, this.projectiles.length );
+   }
 }
 
 var mainLevel = new Level();
 
 var evalContext = {
    shoot: function () { return mainLevel.shoot(); },
+   repair: function () { return mainLevel.repair(); },
    setCannonAngle: function ( t ) {
       if ( t >= cannonMinAngle && t <= cannonMaxAngle )
          mainLevel.targetAngle = -t;
@@ -312,4 +353,5 @@ var evalContext = {
       return result;
    },
    ready: function () { return mainLevel.reload >= 1; },
+   hp: function () { return mainLevel.cannonHP; }
 }
