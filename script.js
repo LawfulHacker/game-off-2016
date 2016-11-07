@@ -8,6 +8,7 @@ var gfx_rangeColor = "#151515";
 var gfx_linew = 4;
 
 var gfx_enemyH = 17;
+var gfx_enemyR = 10;
 
 var levelY = 0; // Level base y
 
@@ -43,6 +44,40 @@ var gameSpeed = 1;
 var targetGameSpeed = gameSpeed;
 var pause = 0; // 1 = play, 0 = pause
 var _gameOver = 0;
+
+var spawners = [
+   {
+      id: "exp_amount",
+      name: "ExpAmount",
+      desc: "the enemy spawn frequency increases exponentially over time",
+      spawnTimeMin: 0,
+      spawnTimeMax: 3,
+      spawnTimeT: 50,
+      speed: 60,
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
+      },
+      spawn: function ( l ) {
+        return [ canvas.width + gfx_enemyR, 60 ];
+      }
+  },
+
+  {
+      id: "exp_speed",
+      name: "ExpSpeed",
+      desc: "the enemy speed increases exponentially over time",
+      spawnTime: 3,
+      speedMin: 60,
+      speedMax: 120,
+      speedT: 50,
+      condition: function ( l ) {
+         return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime;
+      },
+      spawn: function ( l ) {
+         return [ canvas.width + gfx_enemyR, this.speedMax - (this.speedMax - this.speedMin) * Math.exp ( -l.time / this.speedT ) ];
+      }
+    }
+];
 
 function togglePause () {
    pause = 1 - pause;
@@ -177,6 +212,8 @@ var Level = function () {
 
    this.lastSpawn = -1;
 
+   this.spawner = spawners[0];
+
    this.draw = function ( context ) {
       var R = cannonShootSpeed * cannonShootSpeed / g;
       var r = cannonShootSpeed * cannonShootSpeed / g * Math.sin ( 2 * cannonMinAngle );
@@ -201,18 +238,18 @@ var Level = function () {
 
       // Enemies
       for ( i = 0; i < this.enemies.length; i++ ) {
-         if ( i == 0 || this.enemies[i][0] - this.enemies[i-1][0] > 20 )
-            context.lineTo ( this.enemies[i][0] - 10, levelY );
+         if ( i == 0 || this.enemies[i][0] - this.enemies[i-1][0] > 2*gfx_enemyR )
+            context.lineTo ( this.enemies[i][0] - gfx_enemyR, levelY );
 
          context.lineTo ( this.enemies[i][0], levelY - gfx_enemyH );
 
-         if ( i < this.enemies.length - 1 && this.enemies[i+1][0] - this.enemies[i][0] < 20 ) {
+         if ( i < this.enemies.length - 1 && this.enemies[i+1][0] - this.enemies[i][0] < 2*gfx_enemyR ) {
             var x = 0.5 * ( this.enemies[i][0] + this.enemies[i+1][0] );
             var y = gfx_enemyH - 2 * ( x - this.enemies[i][0] );
             context.lineTo ( x, levelY - y );
          }
          else
-            context.lineTo ( this.enemies[i][0] + 10, levelY );
+            context.lineTo ( this.enemies[i][0] + gfx_enemyR, levelY );
       }
 
       context.lineTo ( canvas.width, levelY );
@@ -272,14 +309,6 @@ var Level = function () {
       }
    }
 
-   this.spawnEnemy = function () {
-      this.lastSpawn = this.time;
-      v = enemySpeedVariance ( this.time );
-      e = [ canvas.width + 10, enemySpeed - v + 2*v *  Math.random() ];
-      this.enemies.push ( e );
-      return e;
-   }
-
    this.killEnemy = function ( i ) {
       if ( this.enemies[i] == this.marked )
          this.marked = 0;
@@ -333,10 +362,10 @@ var Level = function () {
          f.call ( evalContext );
       }
 
-      /*if ( Math.random() < spawnChance ( this.time ) * t )
-         this.spawnEnemy();*/
-      if ( this.lastSpawn < 0 || this.time - this.lastSpawn > 1 + 5*Math.exp(-this.time/100) )
-         this.spawnEnemy();
+      if ( this.spawner && this.spawner.condition( this ) ) {
+         this.lastSpawn = this.time;
+         this.enemies.push ( this.spawner.spawn ( this ) );
+      }
 
       for ( i = 0; i < this.enemies.length; i++ ) {
          this.enemies[i][0] -= this.enemies[i][1] * t;
