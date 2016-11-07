@@ -21,9 +21,6 @@
             top: 0; bottom: 0; right: 0; left: 0;
          }
 
-         #code {
-         }
-
          #code:focus {
             outline: none;
          }
@@ -33,11 +30,14 @@
          }
 
          #buttons {
-            text-align: right;
             margin-top: 10px;
             height: 32px;
             width: 100%;
+            position: relative;
          }
+
+         #left { display: inline-block; width: 50% }
+         #right { display: inline-block; width: 50%; text-align: right; }
 
          .btn {
             display: inline-block;
@@ -45,16 +45,38 @@
             border-radius: 2px;
             height: 32px;
             padding-left: 20px; padding-right: 20px;
+            text-align:center;
             font-family: Consolas, Monospace;
             color: #808080;
             line-height: 32px;
             cursor:pointer;
          }
 
+         .btnbar-l {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            margin-right: 0;
+         }
+
+         .btnbar-m {
+            border-radius: 0;
+            margin-right: 0;
+            margin-left: 0;
+         }
+
+         .btnbar-r {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            margin-left: 0;
+         }
+
          .btn:hover {
             color: #A0A0A0;
             background-color: #202020;
          }
+
+         #slow, #fast { width: 32px; padding: 0; text-align: center; }
+         #speed { width: 100px; text-align: center; }
 
          .CodeMirror {
             background-color: #101010;
@@ -76,9 +98,13 @@
          <textarea id="code">// Type your code here, and press apply to run it
 this.shoot();</textarea>
          <div id="buttons">
-            <a href="reference.html" class="btn" target="_blank">Reference</a>
-            <span id="pause" class="btn">Play</span>
-            <span id="apply" class="btn">Apply</span>
+            <div id="left">
+               <span id="pause" class="btn">Play</span>
+               <span id="slow" class="btn btnbar-l">-</span><span id="speed" class="btn btnbar-m">speed: 1</span><span id="fast" class="btn btnbar-r">+</span>
+            </div><div id="right">
+               <a href="reference.html" class="btn" target="_blank">Reference</a>
+               <span id="apply" class="btn">Apply</span>
+            </div>
          </div>
       </div>
    </body>
