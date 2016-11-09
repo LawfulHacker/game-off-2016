@@ -36,19 +36,21 @@ const boomRange = 20; // Bullet explosion range
 
 const spawnChanceBase = 0.4; // Chance of spawning an enemy every frame
 const spawnChanceMax = 1;
+
+const controllerT = 1 / 10 / fps;
+
 var spawnChance = function ( t ) {
    return spawnChanceBase + (1 - Math.exp(-t / 500)) * (spawnChanceMax - spawnChanceBase);
 }
 
 var gameSpeed = 1;
-var targetGameSpeed = gameSpeed;
 var pause = 0; // 1 = play, 0 = pause
 var _gameOver = 0;
 
 var spawners = [
    {
       id: "exp_amount",
-      name: "ExpAmount",
+      name: "Exp_Am",
       desc: "the enemy spawn frequency increases exponentially over time",
       spawnTimeMin: 0,
       spawnTimeMax: 3,
@@ -60,23 +62,77 @@ var spawners = [
       spawn: function ( l ) {
         return [ canvas.width + gfx_enemyR, 60 ];
       }
-  },
+   },
 
-  {
-      id: "exp_speed",
-      name: "ExpSpeed",
-      desc: "the enemy speed increases exponentially over time",
-      spawnTime: 3,
+   {
+      id: "exp_all",
+      name: "Exp_All",
+      desc: "the enemy amount and speed increase exponentially over time",
+      spawnTimeMin: 0,
+      spawnTimeMax: 3,
+      spawnTimeT: 50,
       speedMin: 60,
       speedMax: 120,
       speedT: 50,
       condition: function ( l ) {
-         return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime;
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
       },
       spawn: function ( l ) {
          return [ canvas.width + gfx_enemyR, this.speedMax - (this.speedMax - this.speedMin) * Math.exp ( -l.time / this.speedT ) ];
       }
-    }
+   },
+
+   {
+      id: "ran_speed",
+      name: "Ran_Spd",
+      desc: "the enemy speed is random",
+      spawnTime: 3,
+      speedAve: 60,
+      speedVT: 50,
+      speedV: function ( t ) { return 30 * ( 1 - Math.exp ( -t / this.speedVT ) ); },
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime;
+      },
+      spawn: function ( l ) {
+         return [ canvas.width + gfx_enemyR,
+            this.speedAve + 2 * this.speedV(l.time) * (Math.random() - 1/2) ];
+      }
+   },
+
+   {
+      id: "ran_amount",
+      name: "Ran_Am",
+      desc: "the enemy amount is random",
+      spawnTimeAve: 3,
+      spawnTimeVT: 50,
+      spawnTimeV: function ( t ) { return 2 * ( 1 - Math.exp ( -t / this.spawnTimeVT ) ); },
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.nextT;
+      },
+      spawn: function ( l ) {
+         this.nextT = this.spawnTimeAve + 2 * this.spawnTimeV(l.time) * (Math.random() - 1/2);
+         return [ canvas.width + gfx_enemyR, 60 ];
+      }
+   },
+
+   {
+      id: "ran_all",
+      name: "Ran_All",
+      desc: "the enemy amount and speed is random",
+      spawnTimeAve: 3,
+      spawnTimeVT: 50,
+      spawnTimeV: function ( t ) { return 2 * ( 1 - Math.exp ( -t / this.spawnTimeVT ) ); },
+      speedAve: 60,
+      speedVT: 50,
+      speedV: function ( t ) { return 30 * ( 1 - Math.exp ( -t / this.speedVT ) ); },
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.nextT;
+      },
+      spawn: function ( l ) {
+         this.nextT = this.spawnTimeAve + 2 * this.spawnTimeV(l.time) * (Math.random() - 1/2);
+         return [ canvas.width + gfx_enemyR, this.speedAve + 2 * this.speedV(l.time) * (Math.random() - 1/2) ];
+      }
+   }
 ];
 
 function togglePause () {
@@ -142,13 +198,27 @@ var setup = function () {
    document.getElementById("pause").onclick = togglePause;
 
    document.getElementById("slow").onclick = function () {
-      targetGameSpeed -= 0.5; if ( targetGameSpeed < 0.5 ) targetGameSpeed = 0.5;
-      document.getElementById("speed").innerText = "speed: " + targetGameSpeed;
+      gameSpeed -= 1; if ( gameSpeed < 1 ) gameSpeed = 1;
+      document.getElementById("speed").innerText = "speed: " + gameSpeed;
    }
    document.getElementById("fast").onclick = function () {
-      targetGameSpeed += 0.5;
-      document.getElementById("speed").innerText = "speed: " + targetGameSpeed;
+      gameSpeed += 1;
+      document.getElementById("speed").innerText = "speed: " + gameSpeed;
    }
+
+   for ( i = 0; i < spawners.length; i++ ) {
+      $('<span id="' + i + '" class="btn" name="tooltip">' + i + '</span>').appendTo("#spawners");
+   }
+
+   $("#spawners #0").addClass("active");
+
+   $("#spawners .btn").click ( function() {
+      $("#spawners .btn.active").removeClass("active");
+      $(this).addClass("active");
+      mainLevel.spawner = spawners[ this.id ];
+      pauseGame();
+      mainLevel.reset();
+   } );
 
    setInterval ( frame, 1000 / fps );
 }
@@ -170,8 +240,10 @@ function getScreenShake () {
 var gameOver = function () {
    pauseGame();
    _gameOver = 1;
-   if ( !localStorage.hiscore || mainLevel.score() > localStorage.hiscore )
-      localStorage.hiscore = mainLevel.score();
+
+   s = "hiscore_" + mainLevel.spawner.id;
+   if ( !localStorage[s] || mainLevel.score() > localStorage[s] )
+      localStorage[s] = mainLevel.score();
 }
 
 var draw = function () {
@@ -187,8 +259,8 @@ var draw = function () {
 }
 
 var update = function () {
-   mainLevel.update ( pause * gameSpeed / fps );
-   gameSpeed += ( targetGameSpeed - gameSpeed ) / fps;
+   for ( var i = 0; i < gameSpeed; i++ )
+      mainLevel.update ( pause / fps );
 }
 
 var Level = function () {
@@ -211,6 +283,7 @@ var Level = function () {
    this.marked = 0;
 
    this.lastSpawn = -1;
+   this.lastController = -1;
 
    this.spawner = spawners[0];
 
@@ -298,14 +371,15 @@ var Level = function () {
       context.fillRect ( canvas.width - 100, 17, 90 * this.reload, 10 );
       context.fillText ( "Ready: ", canvas.width - 175, 28 );
 
-      context.fillText ( "SCORE: " + this.score(), canvas.width - 175, 48 );
-      context.fillText ( "BEST:  " + ( localStorage.hiscore ? localStorage.hiscore : '-' ), canvas.width - 175, 68 );
+      context.fillText ( "TEST:  " + this.spawner.name, canvas.width - 175, 48 );
+      context.fillText ( "SCORE: " + this.score(), canvas.width - 175, 68 );
+      context.fillText ( "BEST:  " + ( localStorage["hiscore_" + this.spawner.id] ? localStorage["hiscore_" + this.spawner.id] : '-' ), canvas.width - 175, 88 );
 
       if ( !pause && !_gameOver ) {
-         context.fillText ( "PAUSED", canvas.width - 125, 98 );
+         context.fillText ( "PAUSED", canvas.width - 125, 118 );
       }
       else if ( !pause && _gameOver ) {
-         context.fillText ( "GAME OVER", canvas.width - 187, 98 );
+         context.fillText ( "GAME OVER", canvas.width - 187, 118 );
       }
    }
 
@@ -336,13 +410,13 @@ var Level = function () {
       else
          this.cannonAngle += Math.sign ( this.targetAngle - this.cannonAngle ) * d;
 
-      for ( i = 0; i < this.projectiles.length; i++ ) {
+      for ( var i = 0; i < this.projectiles.length; i++ ) {
          this.projectiles[i][0] += this.projectiles[i][2] * t;
          this.projectiles[i][1] += this.projectiles[i][3] * t + 0.5 * g * t * t;
          this.projectiles[i][3] += g * t;
 
          if ( this.projectiles[i][1] >= levelY ) {
-            for ( j = 0; j < this.enemies.length; j++ ) {
+            for ( var j = 0; j < this.enemies.length; j++ ) {
                if ( Math.abs ( this.enemies[j][0] - this.projectiles[i][0] ) <= boomRange ) {
                   this.killEnemy(j); j--;
                   this.kills ++;
@@ -357,9 +431,10 @@ var Level = function () {
       this.reload += reloadSpeed * t;
       if ( this.reload >= 1 ) this.reload = 1;
 
-      if ( mainLevel.controller ) {
+      if ( mainLevel.controller && this.time - this.lastController > controllerT ) {
          f = function () { eval ( mainLevel.controller ); };
          f.call ( evalContext );
+         this.lastController = this.time;
       }
 
       if ( this.spawner && this.spawner.condition( this ) ) {
@@ -367,7 +442,7 @@ var Level = function () {
          this.enemies.push ( this.spawner.spawn ( this ) );
       }
 
-      for ( i = 0; i < this.enemies.length; i++ ) {
+      for ( var i = 0; i < this.enemies.length; i++ ) {
          this.enemies[i][0] -= this.enemies[i][1] * t;
 
          if ( this.enemies[i][0] - 10 < 20 + 2 * cannonR ) {
@@ -420,6 +495,10 @@ var Level = function () {
       this.projectiles.splice ( 0, this.projectiles.length );
       this.cannonHP = cannonMaxHP;
       this.lastSpawn = -1;
+      this.lastController = -1;
+      this.cannonAngle = -Math.PI / 4;
+      this.targetAngle = -Math.PI / 4;
+      this.reload = 1;
    }
 
    this.score = function () {

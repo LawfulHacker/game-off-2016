@@ -6,11 +6,18 @@
       <link rel="stylesheet" href="codemirror.css">
       <script src="javascript.js"></script>
 
+      <script
+         src="https://code.jquery.com/jquery-3.1.1.slim.min.js"
+         integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc="
+         crossorigin="anonymous"></script>
+
       <script src="script.js"></script>
 
       <style>
          body {
             background-color: black;
+            font-family: Consolas, Monospace;
+            color: #808080;
          }
 
          #wrapper {
@@ -52,6 +59,27 @@
             cursor:pointer;
          }
 
+         #spawners {
+            margin: 0;
+            margin-bottom: 4px;
+            display: inline-block;
+         }
+
+         #spawners .btn {
+            width: 32px;
+            padding: 0;
+            margin-left: 4px;
+         }
+
+         #spawners .btn.active {
+            color: white;
+            height: 36px;
+            position: relative;
+            top: -4px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+         }
+
          .btnbar-l {
             border-top-right-radius: 0;
             border-bottom-right-radius: 0;
@@ -77,12 +105,14 @@
 
          #slow, #fast { width: 32px; padding: 0; text-align: center; }
          #speed { width: 100px; text-align: center; }
+         #pause { width: 60px; }
 
          .CodeMirror {
             background-color: #101010;
             color: white;
             font-family: Consolas, Monospace;
             border-radius: 2px;
+            height: 256px;
          }
 
          .CodeMirror-cursor {
@@ -94,7 +124,8 @@
 
    <body onload="setup()">
       <div id="wrapper">
-         <canvas id="canvas" width="800" height="240"></canvas>
+         <canvas id="canvas" width="800" height="240"></canvas><div id="spawners">
+         </div>
          <textarea id="code">// Type your code here, and press apply to run it
 this.shoot();</textarea>
          <div id="buttons">
