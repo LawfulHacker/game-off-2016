@@ -2,7 +2,7 @@
 
 <html>
    <head>
-      <title>Cannon - API reference</title>
+      <title>Cannon - Manual and API reference</title>
       <style>
          body {
             background-color: black;
@@ -22,12 +22,31 @@
 
          #wrapper p { margin-top: 0; }
          .ref-header { margin-bottom: 0; }
+
+         .header { color: #ff2323; }
       </style>
    </head>
 
    <body>
       <div id="wrapper">
-         <h1>Cannon API reference (incomplete)</h1>
+         <h1 id="manual" class="header">Game manual</h1>
+         <p class="ref-body"> The aim of this game is to programmatically control a cannon to shoot
+            and destroy hordes of enemies. The cannon exposes a JavaScript API for you
+            to use to control it. You will find some <a href="#examples">examples</a> and a
+            <a href="#api-reference">complete API reference</a> below.
+         </p>
+         <p class="ref-body"> Every time an enemy reaches the cannon, the cannon
+            loses 1 health point (out of 10). Once health goes down to 0, you lose.
+         </p>
+         <p class="ref-body"> The cannon can basically perform two actions: it can
+            shoot or self-repair from damage taken. Both actions will require some
+            time for the cannon to be ready again.
+         </p>
+
+         <h1 class="header" id="examples">Examples</h1>
+         <p class="ref-body"> More to come... </p>
+
+         <h1 class="header" id="api-reference">Cannon API reference (incomplete)</h1>
          <h2 class="ref-header">Methods:</h2>
          <p id="shoot">
             <span class="ref-title">this.shoot(): </span>

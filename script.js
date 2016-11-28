@@ -31,7 +31,8 @@ var enemySpeedVariance = function ( t ) {
 
 const g = 200; // Gravity
 
-const reloadSpeed = 1; // Cannon reload speed
+const shootReloadSpeed = 1; // Cannon reload speed
+const repairReloadSpeed = 0.5; // Repair reload speed
 const boomRange = 20; // Bullet explosion range
 
 const spawnChanceBase = 0.4; // Chance of spawning an enemy every frame
@@ -60,77 +61,28 @@ var spawners = [
         return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
       },
       spawn: function ( l ) {
-        return [ canvas.width + gfx_enemyR, 60 ];
+        return [ canvas.width + gfx_enemyR, 0, 60 ];
       }
    },
 
    {
-      id: "exp_all",
-      name: "Exp_All",
-      desc: "the enemy amount and speed increase exponentially over time",
-      spawnTimeMin: 0,
-      spawnTimeMax: 3,
-      spawnTimeT: 50,
-      speedMin: 60,
-      speedMax: 120,
-      speedT: 50,
+      id: "packs",
+      name: "Packs",
+      desc: "enemies are spawned in packs",
+      packSize: 0,
+      packSizeMin: 1,
+      packSizeMax: 10,
+      packSizeT: 50,
+      packT: 0.35,
+      spawnTime: 2.5,
       condition: function ( l ) {
-        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
+        if ( this.packSize > 0 && l.time - l.lastSpawn > this.packT ) { this.packSize--; return 1; }
+        else if ( l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime ) {
+           this.packSize = this.packSizeMax - Math.floor ( (this.packSizeMax - this.packSizeMin) * Math.exp ( -l.time / this.packSizeT ) );
+        }
       },
       spawn: function ( l ) {
-         return [ canvas.width + gfx_enemyR, this.speedMax - (this.speedMax - this.speedMin) * Math.exp ( -l.time / this.speedT ) ];
-      }
-   },
-
-   {
-      id: "ran_speed",
-      name: "Ran_Spd",
-      desc: "the enemy speed is random",
-      spawnTime: 3,
-      speedAve: 60,
-      speedVT: 50,
-      speedV: function ( t ) { return 30 * ( 1 - Math.exp ( -t / this.speedVT ) ); },
-      condition: function ( l ) {
-        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime;
-      },
-      spawn: function ( l ) {
-         return [ canvas.width + gfx_enemyR,
-            this.speedAve + 2 * this.speedV(l.time) * (Math.random() - 1/2) ];
-      }
-   },
-
-   {
-      id: "ran_amount",
-      name: "Ran_Am",
-      desc: "the enemy amount is random",
-      spawnTimeAve: 3,
-      spawnTimeVT: 50,
-      spawnTimeV: function ( t ) { return 2 * ( 1 - Math.exp ( -t / this.spawnTimeVT ) ); },
-      condition: function ( l ) {
-        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.nextT;
-      },
-      spawn: function ( l ) {
-         this.nextT = this.spawnTimeAve + 2 * this.spawnTimeV(l.time) * (Math.random() - 1/2);
-         return [ canvas.width + gfx_enemyR, 60 ];
-      }
-   },
-
-   {
-      id: "ran_all",
-      name: "Ran_All",
-      desc: "the enemy amount and speed is random",
-      spawnTimeAve: 3,
-      spawnTimeVT: 50,
-      spawnTimeV: function ( t ) { return 2 * ( 1 - Math.exp ( -t / this.spawnTimeVT ) ); },
-      speedAve: 60,
-      speedVT: 50,
-      speedV: function ( t ) { return 30 * ( 1 - Math.exp ( -t / this.speedVT ) ); },
-      condition: function ( l ) {
-        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.nextT;
-      },
-      spawn: function ( l ) {
-         this.nextT = this.spawnTimeAve + 2 * this.spawnTimeV(l.time) * (Math.random() - 1/2);
-         return [ canvas.width + gfx_enemyR, this.speedAve + 2 * this.speedV(l.time) * (Math.random() - 1/2) ];
+        return [ canvas.width + gfx_enemyR, 0, 60 ];
       }
    }
 ];
@@ -190,8 +142,9 @@ var setup = function () {
 
    document.getElementById("apply").onclick = function () {
       mainLevel.reset();
-      mainLevel.controller = codeMirror.doc.getValue();
-      localStorage.controller = mainLevel.controller;
+      _gameOver = 0;
+      mainLevel.applyController ( codeMirror.doc.getValue() );
+      localStorage.controller = codeMirror.doc.getValue();
       unpauseGame();
    }
 
@@ -200,14 +153,21 @@ var setup = function () {
    document.getElementById("slow").onclick = function () {
       gameSpeed -= 1; if ( gameSpeed < 1 ) gameSpeed = 1;
       document.getElementById("speed").innerText = "speed: " + gameSpeed;
+      localStorage.gameSpeed = gameSpeed;
    }
    document.getElementById("fast").onclick = function () {
       gameSpeed += 1;
       document.getElementById("speed").innerText = "speed: " + gameSpeed;
+      localStorage.gameSpeed = gameSpeed;
    }
 
-   for ( i = 0; i < spawners.length; i++ ) {
+   for ( var i = 0; i < spawners.length; i++ ) {
       $('<span id="' + i + '" class="btn" name="tooltip">' + i + '</span>').appendTo("#spawners");
+   }
+
+   if ( localStorage.gameSpeed ) {
+      gameSpeed = parseInt(localStorage.gameSpeed);
+      document.getElementById("speed").innerText = "speed: " + gameSpeed;
    }
 
    $("#spawners #0").addClass("active");
@@ -218,6 +178,19 @@ var setup = function () {
       mainLevel.spawner = spawners[ this.id ];
       pauseGame();
       mainLevel.reset();
+   } );
+
+   $("#reset").click ( function () {
+      if ( $(this).text() == "Confirm?" ) {
+         for ( var i = 0; i < spawners.length; i++ )
+            delete ( localStorage["hiscore_" + spawners[i].id] );
+         $(this).text("Hi-scores reset");
+      }
+      else $(this).text("Confirm?");
+   } );
+
+   $("#reset").on ( 'mouseout', function () {
+      $(this).text("Reset hi-scores");
    } );
 
    setInterval ( frame, 1000 / fps );
@@ -260,15 +233,17 @@ var draw = function () {
 
 var update = function () {
    for ( var i = 0; i < gameSpeed; i++ )
-      mainLevel.update ( pause / fps );
+      mainLevel.update ( (pause && !_gameOver) / fps );
 }
 
 var Level = function () {
    this.cannonAngle = -Math.PI / 4;
    this.targetAngle = -Math.PI / 4;
    this.cannonHP = cannonMaxHP;
-   this.reload = 1;
+   this.shootReload = 1;
+   this.repairReload = 1;
 
+   // Enemy format: [ x, y, speed ]
    this.enemies = new Array();
 
    this.controller = 0;
@@ -285,7 +260,19 @@ var Level = function () {
    this.lastSpawn = -1;
    this.lastController = -1;
 
+   // Projectile format: [ x, y, speedx, speedy ]
+   this.projectiles = new Array();
+
    this.spawner = spawners[0];
+
+   this.applyController = function ( c ) {
+      var sand = createSandbox ( "controller = {" +  c + "}", Object.create(null), { window: {}, document: {} } );
+      sand();
+      for ( var v in controllerContext ) controller[v] = controllerContext[v];
+      this.controller = controller;
+
+      this.controller.setup();
+   }
 
    this.draw = function ( context ) {
       var R = cannonShootSpeed * cannonShootSpeed / g;
@@ -309,20 +296,22 @@ var Level = function () {
       context.lineTo ( 20, levelY );
       context.arc ( cannonX + cannonR, levelY, cannonR, Math.PI, 0 );
 
-      // Enemies
-      for ( i = 0; i < this.enemies.length; i++ ) {
-         if ( i == 0 || this.enemies[i][0] - this.enemies[i-1][0] > 2*gfx_enemyR )
-            context.lineTo ( this.enemies[i][0] - gfx_enemyR, levelY );
+      // Ground enemies
+      for ( var i = 0; i < this.enemies.length; i++ ) {
+         if ( this.enemies[i][1] == 0 ) {
+            if ( i == 0 || this.enemies[i][0] - this.enemies[i-1][0] > 2*gfx_enemyR || this.enemies[i-1][1] != this.enemies[i][1] )
+               context.lineTo ( this.enemies[i][0] - gfx_enemyR, levelY );
 
-         context.lineTo ( this.enemies[i][0], levelY - gfx_enemyH );
+            context.lineTo ( this.enemies[i][0], levelY - gfx_enemyH );
 
-         if ( i < this.enemies.length - 1 && this.enemies[i+1][0] - this.enemies[i][0] < 2*gfx_enemyR ) {
-            var x = 0.5 * ( this.enemies[i][0] + this.enemies[i+1][0] );
-            var y = gfx_enemyH - 2 * ( x - this.enemies[i][0] );
-            context.lineTo ( x, levelY - y );
+            if ( i < this.enemies.length - 1 && this.enemies[i+1][0] - this.enemies[i][0] < 2*gfx_enemyR && this.enemies[i+1][1] == this.enemies[i][1] ) {
+               var x = 0.5 * ( this.enemies[i][0] + this.enemies[i+1][0] );
+               var y = gfx_enemyH - 2 * ( x - this.enemies[i][0] );
+               context.lineTo ( x, levelY - y );
+            }
+            else
+               context.lineTo ( this.enemies[i][0] + gfx_enemyR, levelY );
          }
-         else
-            context.lineTo ( this.enemies[i][0] + gfx_enemyR, levelY );
       }
 
       context.lineTo ( canvas.width, levelY );
@@ -337,15 +326,27 @@ var Level = function () {
 
       context.stroke();
 
+      // Air enemies
+      for ( var i = 0; i < this.enemies.length; i++ ) {
+         if ( this.enemies[i][1] > 0 ) {
+            context.beginPath();
+            context.moveTo ( this.enemies[i][0] - gfx_enemyR, levelY - this.enemies[i][1] );
+            context.lineTo ( this.enemies[i][0] + gfx_enemyR, levelY - this.enemies[i][1] - gfx_enemyH / 2 );
+            context.lineTo ( this.enemies[i][0] + gfx_enemyR, levelY - this.enemies[i][1] + gfx_enemyH / 2 );
+            context.closePath();
+            context.stroke();
+         }
+      }
+
       // Marked enemy
       if ( this.marked ) {
          context.beginPath();
-         context.arc ( this.marked[0], levelY - gfx_enemyH - 8, 3, 0, 2*Math.PI );
+         context.arc ( this.marked[0], levelY - gfx_enemyH - this.marked[1] - 8, 3, 0, 2*Math.PI );
          context.fill();
       }
 
       // Projectiles
-      for ( i = 0; i < this.projectiles.length; i++ ) {
+      for ( var i = 0; i < this.projectiles.length; i++ ) {
          context.beginPath();
          context.arc ( this.projectiles[i][0], this.projectiles[i][1], gfx_linew * 0.75, 0, 2 * Math.PI );
          context.fill();
@@ -358,7 +359,10 @@ var Level = function () {
       context.stroke();
 
       // HUD
+      context.textAlign = "left";
+      context.textBaseline = "alphabetic";
       context.font = "20px Consolas";
+
       context.fillText ( "Time:    " + Math.floor ( this.time ), 10, 23 );
       context.fillText ( "HP:      " + this.cannonHP + "/" + cannonMaxHP, 10, 43 );
       context.fillText ( "Kills:   " + this.kills, 10, 63 );
@@ -368,18 +372,26 @@ var Level = function () {
       context.fillText ( "Repairs: " + this.repairs, 10, 103 );
 
       context.strokeRect ( canvas.width - 100, 17, 90, 10 );
-      context.fillRect ( canvas.width - 100, 17, 90 * this.reload, 10 );
+      context.fillRect ( canvas.width - 100, 17, 90 * Math.min (this.shootReload, this.repairReload), 10 );
       context.fillText ( "Ready: ", canvas.width - 175, 28 );
 
       context.fillText ( "TEST:  " + this.spawner.name, canvas.width - 175, 48 );
       context.fillText ( "SCORE: " + this.score(), canvas.width - 175, 68 );
       context.fillText ( "BEST:  " + ( localStorage["hiscore_" + this.spawner.id] ? localStorage["hiscore_" + this.spawner.id] : '-' ), canvas.width - 175, 88 );
 
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.font = "30px Consolas";
+
       if ( !pause && !_gameOver ) {
-         context.fillText ( "PAUSED", canvas.width - 125, 118 );
+         context.fillText ( "--- PAUSED ---", canvas.width / 2, canvas.height / 2 );
+         context.font = "15px Consolas";
+         context.fillText ( "press apply or play to unpause", canvas.width / 2, canvas.height / 2 + 20 );
       }
-      else if ( !pause && _gameOver ) {
-         context.fillText ( "GAME OVER", canvas.width - 187, 118 );
+      else if ( _gameOver ) {
+         context.fillText ( "--- GAME OVER ---", canvas.width / 2, canvas.height / 2 );
+         context.font = "15px Consolas";
+         context.fillText ( "press apply to restart", canvas.width / 2, canvas.height / 2 + 20 );
       }
    }
 
@@ -404,46 +416,43 @@ var Level = function () {
 
       this.time += t;
 
+      // Adjusts cannon position
       var d = cannonSpeed * t;
       if ( Math.abs(this.targetAngle - this.cannonAngle) < d )
          this.cannonAngle = this.targetAngle;
       else
          this.cannonAngle += Math.sign ( this.targetAngle - this.cannonAngle ) * d;
 
+      // Projectile movement and collision checks
       for ( var i = 0; i < this.projectiles.length; i++ ) {
          this.projectiles[i][0] += this.projectiles[i][2] * t;
          this.projectiles[i][1] += this.projectiles[i][3] * t + 0.5 * g * t * t;
          this.projectiles[i][3] += g * t;
 
-         if ( this.projectiles[i][1] >= levelY ) {
-            for ( var j = 0; j < this.enemies.length; j++ ) {
-               if ( Math.abs ( this.enemies[j][0] - this.projectiles[i][0] ) <= boomRange ) {
-                  this.killEnemy(j); j--;
-                  this.kills ++;
-               }
-            }
+         var hit = 0;
 
+         // Check collisions with enemies
+         for ( var j = 0; j < this.enemies.length; j++ ) {
+            if ( Math.abs ( levelY - this.enemies[j][1] - this.projectiles[i][1] ) < 4 && Math.abs ( this.enemies[j][0] - this.projectiles[i][0] ) <= boomRange ) {
+               this.killEnemy ( j ); j--;
+               this.kills++;
+               hit = 1;
+            }
+         }
+
+         // Check if hit something or the ground
+         if ( hit || this.projectiles[i][1] >= levelY ) {
             this.projectiles.splice ( i, 1 );
             i--;
          }
       }
 
-      this.reload += reloadSpeed * t;
-      if ( this.reload >= 1 ) this.reload = 1;
-
-      if ( mainLevel.controller && this.time - this.lastController > controllerT ) {
-         f = function () { eval ( mainLevel.controller ); };
-         f.call ( evalContext );
-         this.lastController = this.time;
-      }
-
-      if ( this.spawner && this.spawner.condition( this ) ) {
-         this.lastSpawn = this.time;
-         this.enemies.push ( this.spawner.spawn ( this ) );
-      }
-
+      // Enemy movement
       for ( var i = 0; i < this.enemies.length; i++ ) {
-         this.enemies[i][0] -= this.enemies[i][1] * t;
+         this.enemies[i][0] -= this.enemies[i][2] * t;
+
+         if ( this.enemies[i][1] > 0 && this.enemies[i][0] < 150 )
+            this.enemies[i][1] -= this.enemies[i][1] * 0.5 * t;
 
          if ( this.enemies[i][0] - 10 < 20 + 2 * cannonR ) {
             this.killEnemy(i);
@@ -452,22 +461,39 @@ var Level = function () {
          }
       }
 
-      this.enemies.sort ( function(a,b) { return a[0] - b[0]; } );
+      // Enemy spawning
+      if ( this.spawner && this.spawner.condition( this ) ) {
+         this.lastSpawn = this.time;
+         this.enemies.push ( this.spawner.spawn ( this ) );
+      }
 
+      // Sorts enemy: first along x, then along y
+      this.enemies.sort ( function(a,b) { if ( a[0] == b[0] ) return a[1] - b[1]; else return a[0] - b[0]; } );
+
+      // Reload
+      this.shootReload += shootReloadSpeed * t;
+      if ( this.shootReload >= 1 ) this.shootReload = 1;
+      this.repairReload += repairReloadSpeed * t;
+      if ( this.repairReload >= 1 ) this.repairReload = 1;
+
+      // Misc
       this.cannonRecoil -= this.cannonRecoil * t * 5;
+
+      // Controller
+      if ( this.controller && this.time - this.lastController > controllerT ) {
+         this.controller.update();
+      }
    }
 
-   this.projectiles = new Array();
-
    this.shoot = function () {
-      if ( this.reload >= 1 ) {
+      if ( Math.min( this.shootReload, this.repairReload ) >= 1 ) {
          this.projectiles.push ( [ 20 + cannonR + (cannonR + cannonL) * Math.cos ( this.cannonAngle ),
             levelY + (cannonR + cannonL) * Math.sin ( this.cannonAngle ),
             cannonShootSpeed * Math.cos ( this.cannonAngle ),
             cannonShootSpeed * Math.sin ( this.cannonAngle )
          ] );
          this.shots++;
-         this.reload = 0;
+         this.shootReload = 0;
          this.cannonRecoil = cannonL * 0.5;
          return 1;
       }
@@ -476,10 +502,10 @@ var Level = function () {
    }
 
    this.repair = function () {
-      if ( this.reload >= 1 ) {
+      if ( Math.min( this.shootReload, this.repairReload ) >= 1 ) {
          this.cannonHP++;
          if ( this.cannonHP > cannonMaxHP ) this.cannonHP = cannonMaxHP;
-         this.reload = 0;
+         this.repairReload = 0;
          this.repairs++;
          return 1;
       }
@@ -498,7 +524,9 @@ var Level = function () {
       this.lastController = -1;
       this.cannonAngle = -Math.PI / 4;
       this.targetAngle = -Math.PI / 4;
-      this.reload = 1;
+      this.shootReload = 1;
+      this.repairReload = 1;
+      this.marked = 0;
    }
 
    this.score = function () {
@@ -513,9 +541,9 @@ var Level = function () {
 
 var mainLevel = new Level();
 
-var evalContext = {
+var controllerContext = {
    shoot: function () { return mainLevel.shoot(); },
-   repair: function () { return mainLevel.repair(); },
+   repair: function () { if ( mainLevel.cannonHP < cannonMaxHP ) return mainLevel.repair(); else return 0; },
    setCannonAngle: function ( t ) {
       if ( t >= cannonMinAngle && t <= cannonMaxAngle )
          mainLevel.targetAngle = -t;
@@ -531,14 +559,32 @@ var evalContext = {
    getCannonAngle: function () { return -mainLevel.cannonAngle; },
    getEnemies: function () {
       result = new Array();
-      for ( i = 0; i < mainLevel.enemies.length; i++ )
-         result.push ( mainLevel.enemies[i][0] );
+      for ( var i = 0; i < mainLevel.enemies.length; i++ )
+         result.push ( [ mainLevel.enemies[i][0] - cannonX, mainLevel.enemies[i][1] ] );
       return result;
    },
-   ready: function () { return mainLevel.reload >= 1; },
+   ready: function () { return Math.min ( mainLevel.shootReload, mainLevel.repairReload ) >= 1; },
    hp: function () { return mainLevel.cannonHP; },
    mark: function ( i ) { mainLevel.marked = mainLevel.enemies[i]; },
    unmark: function ( i ) { mainLevel.marked = 0; },
    log: function ( s ) { console.log(s); },
-   frameTime: function () { return gameSpeed / fps; }
+   frameTime: function () { return gameSpeed / fps; },
+   g: g,
+   cannonShootSpeed: cannonShootSpeed
+}
+
+var createSandbox = function ( code, that, local ) {
+   var params = []; var args = [];
+   for ( var p in local ) {
+      if ( local.hasOwnProperty(p) ) {
+         params.push(p);
+         args.push(local[p]);
+      }
+   }
+
+   var context = Array.prototype.concat.call ( that, params, code );
+   var sandbox = new ( Function.prototype.bind.apply ( Function, context) );
+   context = Array.prototype.concat.call ( that, args );
+
+   return Function.prototype.bind.apply ( sandbox, context );
 }

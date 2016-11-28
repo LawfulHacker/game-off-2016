@@ -10,7 +10,7 @@
          src="https://code.jquery.com/jquery-3.1.1.slim.min.js"
          integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc="
          crossorigin="anonymous"></script>
-
+         
       <script src="script.js"></script>
 
       <style>
@@ -43,8 +43,8 @@
             position: relative;
          }
 
-         #left { display: inline-block; width: 50% }
-         #right { display: inline-block; width: 50%; text-align: right; }
+         #left { display: inline-block; }
+         #right { position: absolute; right: 0; display: inline-block; text-align: right; }
 
          .btn {
             display: inline-block;
@@ -58,6 +58,8 @@
             line-height: 32px;
             cursor:pointer;
          }
+
+         #reset { width: 140px; }
 
          #spawners {
             margin: 0;
@@ -133,7 +135,8 @@ this.shoot();</textarea>
                <span id="pause" class="btn">Play</span>
                <span id="slow" class="btn btnbar-l">-</span><span id="speed" class="btn btnbar-m">speed: 1</span><span id="fast" class="btn btnbar-r">+</span>
             </div><div id="right">
-               <a href="reference.html" class="btn" target="_blank">Reference</a>
+               <span id="reset" class="btn">Reset hi-scores</span>
+               <a href="reference.html" class="btn" target="_blank">How to play</a>
                <span id="apply" class="btn">Apply</span>
             </div>
          </div>
