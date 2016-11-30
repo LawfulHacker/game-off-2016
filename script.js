@@ -1,6 +1,7 @@
 var canvas = 0, context = 0;
 const fps = 60;
 
+// Graphics settings of sorts
 var gfx_lvlColor_alive = "#7fff3f";
 var gfx_lvlColor_dead = "#ff2323";
 var gfx_bgColor = "#101010";
@@ -23,26 +24,13 @@ const cannonMaxAngle = Math.PI / 2 - cannonMinAngle;
 
 const cannonMaxHP = 10;
 
-const enemySpeed = 60; // Base enemy speed
-const enemySpeedVBase = 0; // Enemy speed variance
-var enemySpeedVariance = function ( t ) {
-   return enemySpeedVBase + 15 - 15 * Math.exp(-t / 500);
-}
-
 const g = 200; // Gravity
 
 const shootReloadSpeed = 1; // Cannon reload speed
 const repairReloadSpeed = 0.5; // Repair reload speed
 const boomRange = 20; // Bullet explosion range
 
-const spawnChanceBase = 0.4; // Chance of spawning an enemy every frame
-const spawnChanceMax = 1;
-
 const controllerT = 1 / 10 / fps;
-
-var spawnChance = function ( t ) {
-   return spawnChanceBase + (1 - Math.exp(-t / 500)) * (spawnChanceMax - spawnChanceBase);
-}
 
 var gameSpeed = 1;
 var pause = 0; // 1 = play, 0 = pause
@@ -66,23 +54,43 @@ var spawners = [
    },
 
    {
+      id: "exp_all",
+      name: "Exp_All",
+      desc: "the enemy spawn frequency and speed increases exponentially over time",
+      spawnTimeMin: 0,
+      spawnTimeMax: 3,
+      spawnTimeT: 50,
+      speedMin: 60,
+      speedMax: 100,
+      speedT: 50,
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
+      },
+      spawn: function ( l ) {
+         return [ canvas.width + gfx_enemyR, 0, this.speedMax - (this.speedMax - this.speedMin) * Math.exp ( -l.time / this.speedT ) ];
+      }
+   },
+
+   {
       id: "packs",
       name: "Packs",
       desc: "enemies are spawned in packs",
       packSize: 0,
+      air: 0,
       packSizeMin: 1,
       packSizeMax: 10,
       packSizeT: 50,
-      packT: 0.35,
+      packT: 0.38,
       spawnTime: 2.5,
       condition: function ( l ) {
         if ( this.packSize > 0 && l.time - l.lastSpawn > this.packT ) { this.packSize--; return 1; }
         else if ( l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime ) {
            this.packSize = this.packSizeMax - Math.floor ( (this.packSizeMax - this.packSizeMin) * Math.exp ( -l.time / this.packSizeT ) );
+           this.air = (l.time % 10) > 5;
         }
       },
       spawn: function ( l ) {
-        return [ canvas.width + gfx_enemyR, 0, 60 ];
+        return [ canvas.width + gfx_enemyR, this.air * 40, 60 ];
       }
    }
 ];
@@ -530,9 +538,9 @@ var Level = function () {
    }
 
    this.score = function () {
-      var t = this.time;
+      var t = Math.floor(this.time);
       var k = this.kills * 5;
-      var a = k != 0 ? this.shots / this.kills * 10 : 0;
+      var a = k != 0 ? this.kills / this.shots * 20 : 0;
       var r = this.repairs;
 
       return Math.round ( t + k + a - r );
@@ -567,10 +575,7 @@ var controllerContext = {
    hp: function () { return mainLevel.cannonHP; },
    mark: function ( i ) { mainLevel.marked = mainLevel.enemies[i]; },
    unmark: function ( i ) { mainLevel.marked = 0; },
-   log: function ( s ) { console.log(s); },
-   frameTime: function () { return gameSpeed / fps; },
-   g: g,
-   cannonShootSpeed: cannonShootSpeed
+   log: function ( s ) { console.log(s); }
 }
 
 var createSandbox = function ( code, that, local ) {

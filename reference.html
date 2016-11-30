@@ -2,6 +2,15 @@
 
 <html>
    <head>
+      <script src="codemirror.js"></script>
+      <link rel="stylesheet" href="codemirror.css">
+      <script src="javascript.js"></script>
+
+      <script
+         src="https://code.jquery.com/jquery-3.1.1.slim.min.js"
+         integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc="
+         crossorigin="anonymous"></script>
+
       <title>Cannon - Manual and API reference</title>
       <style>
          body {
@@ -16,7 +25,7 @@
             margin: auto;
          }
 
-         #wrapper a { color: white; }
+         #wrapper a { color: #a0a0a0; }
          .ref-title { color: #7fff3f; }
          .ref-body { color: #808080; }
 
@@ -24,10 +33,36 @@
          .ref-header { margin-bottom: 0; }
 
          .header { color: #ff2323; }
+
+         .CodeMirror {
+            background-color: #101010;
+            color: white;
+            font-family: Consolas, Monospace;
+            border-radius: 2px;
+            height: auto;
+            margin-top: 5px;
+            margin-bottom: 30px;
+         }
+
+         .CodeMirror-cursor {
+            border-color: white;
+            border-width: 2px;
+         }
       </style>
+
+      <script>
+         function setup() {
+            codes = $(".code");
+
+            for ( var i = 0; i < codes.length; i++ ) {
+               CodeMirror ( function ( e ) { codes[i].parentNode.replaceChild ( e, codes[i] ); },
+                  { value: $(codes[i]).text(), lineNumbers: true, readOnly: true } );
+            }
+         }
+      </script>
    </head>
 
-   <body>
+   <body onload="setup();">
       <div id="wrapper">
          <h1 id="manual" class="header">Game manual</h1>
          <p class="ref-body"> The aim of this game is to programmatically control a cannon to shoot
@@ -42,24 +77,91 @@
             shoot or self-repair from damage taken. Both actions will require some
             time for the cannon to be ready again.
          </p>
+         <h2 class="ref-header">Aiming</h2>
+         <p class="ref-body">You can aim the cannon using the function
+            <a href="#set-cannon-angle">this.setCannonAngle (A)</a>, which takes as a parameter
+            the angle you want to point the cannon at, measured in radians, counter-clockwise,
+            starting from the horizontal (which means, 0 is horizontal, Math.PI / is
+            vertical). The cannon has a minimum and maximum angle, which you can
+            respectively read in the variables cannonMinAngle and cannonMaxAngle.
+            When the function is called, the cannon starts moving towards the wanted
+            angle. You can check what angle it currently is at using the function
+            <a href="#get-cannon-angle">this.getCannonAngle()</a>.
+         </p>
+
+         <h2 class="ref-header">Shooting</h2>
+         <p class="ref-body">Using the function <a href="#shoot">this.shoot()</a>, the
+            cannon will shoot if ready. After shooting, it will have to reload and
+            won't be able to shoot for a while.
+         </p>
+
+         <h2 class="ref-header">Repairing</h2>
+         <p class="ref-body"> You can recover your cannon's health with the function
+            <a href="#repair">this.repair()</a>. As for shooting, this will take some
+            time for the cannon to be ready again to shoot or repair. Repair reload
+            time is twice as long as shoot reload time.
+         </p>
+
+         <h2 class="ref-header">Enemies</h2>
+         <p class="ref-body">You can access information about the enemies via the
+            <a href="#get-enemies">this.getEnemies()</a> function. Enemies can come
+            both on the ground or in the air. The pattern they will follow depends
+            on the test you choose.
+         </p>
+
+         <h2 class="ref-header">Scoring</h2>
+         <p class="ref-body">The score will be calculated as follows:<br>
+            [survived time] + 5*[kills] + 20*[accuracy] - [repairs]</p>
 
          <h1 class="header" id="examples">Examples</h1>
-         <p class="ref-body"> More to come... </p>
+         <h2 class="ref-header">Basic shooting:</h2>
+         <p class="code">setup: function () { /* Miscellaneous setup things here */ },
 
-         <h1 class="header" id="api-reference">Cannon API reference (incomplete)</h1>
+update: function () {
+   this.shoot(); // Shoots the cannon
+}</p>
+
+         <h2 class="ref-header">"Up'n'down":</h2>
+         <p class="code">setup: function() {
+   this.setCannonAngle ( cannonMaxAngle );
+},
+
+update: function () {
+   // Moves the cannon from up to down continuously
+   if ( this.getCannonAngle() == cannonMaxAngle )
+      this.setCannonAngle ( cannonMinAngle );
+   if ( this.getCannonAngle() == cannonMinAngle )
+      this.setCannonAngle ( cannonMaxAngle );
+
+   this.shoot();
+}</p>
+
+         <h2 class="ref-header">Repairing:</h2>
+         <p class="code">setup: function () { /* Miscellaneous setup things here */ },
+
+update: function () {
+   if ( this.hp() < 5 ) // EMERGENCY! Low health => repair
+      this.repair();
+
+   this.shoot();
+}</p>
+
+         <h1 class="header" id="api-reference">Cannon API reference</h1>
          <h2 class="ref-header">Methods:</h2>
          <p id="shoot">
             <span class="ref-title">this.shoot(): </span>
             <span class="ref-body">shoots the cannon; it works only if the cannon
             is ready; you can check that programmatically via the
-            <a href="#ready">this.ready()</a> function.</span>
+            <a href="#ready">this.ready()</a> function. The function returns 1
+            if the cannon could shoot, 0 otherwise.</span>
          </p>
 
-         <p id="get-cannon-angle">
-            <span class="ref-title">this.getCannonAngle(): </span>
-            <span class="ref-body">returns current cannon angle, in radians; 0 means
-            horizontal and Math.PI/2 means vertical (note that cannon angle has
-            a maximum and a minimum, see more <a href="#const">here</a>).</span>
+         <p id="repair">
+            <span class="ref-title">this.repair(): </span>
+            <span class="ref-body">repairs your cannon, restoring 1 hit point; it
+            works only if the cannon is ready; you can check that programmatically via the
+            <a href="#ready">this.ready()</a> function. The function returns 1
+            if the cannon could repair, 0 otherwise.</span>
          </p>
 
          <p id="set-cannon-angle">
@@ -69,38 +171,72 @@
             a maximum and a minimum, see more <a href="#const">here</a>).</span>
          </p>
 
+         <p id="get-cannon-angle">
+            <span class="ref-title">this.getCannonAngle(): </span>
+            <span class="ref-body">returns current cannon angle, in radians; 0 means
+            horizontal and Math.PI/2 means vertical (note that cannon angle has
+            a maximum and a minimum, see more <a href="#const">here</a>).</span>
+         </p>
+
          <p id="get-enemies">
             <span class="ref-title">this.getEnemies(): </span>
             <span class="ref-body">returns the current alive enemies as an array;
-            each element of the array contains the x coordinate of correspondant enemy,
-            in pixels; the array is sorted in ascending order, so that the first element
-            is the closest enemy.</span>
+            each element of the array is a two-element array [x,y], where x is
+            the x coordinate of the enemy (0 is the cannon's base center position)
+            and y is the vertical coordinate (0 is the ground). Enemies are sorted
+            in ascending x order, so that the first element of the array is always
+            the closest to the cannon.</span>
          </p>
 
          <p id="ready">
             <span class="ref-title">this.ready(): </span>
-            <span class="ref-body">returns 1 if the cannon is ready to shoot, 0 otherwise.</span>
+            <span class="ref-body">returns 1 if the cannon is ready to shoot,
+            or repair 0 otherwise.</span>
+         </p>
+
+         <p id="hp">
+            <span class="ref-title">this.hp(): </span>
+            <span class="ref-body">returns the amount of hit points left the cannon has.</span>
+         </p>
+
+         <p id="mark">
+            <span class="ref-title">this.mark(i): </span>
+            <span class="ref-body">you can use this function to mark the enemy of index i.
+            The marked enemy is graphically highlighted. You can use this function for
+            debugging purposes; you can mark only one enemy at a time, so the only
+            actually marked enemy will be the last one on which this function was called.</span>
+         </p>
+
+         <p id="unmark">
+            <span class="ref-title">this.unmark(): </span>
+            <span class="ref-body">removes the mark from the currently marked enemy.</span>
          </p>
 
          <h2 class="ref-header" id="const">Constants:</h2>
          <p id="cannon-shoot-speed">
             <span class="ref-title">cannonShootSpeed: </span>
-            <span class="ref-body"></span>
+            <span class="ref-body">the speed of the cannon projectile when shot.</span>
          </p>
 
-         <p id="cannon-x">
-            <span class="ref-title">cannonX: </span>
-            <span class="ref-body"></span>
+         <p id="g">
+            <span class="ref-title">g: </span>
+            <span class="ref-body">gravity force.</span>
          </p>
 
-         <p id="cannon-r">
-            <span class="ref-title">cannonR: </span>
-            <span class="ref-body"></span>
+         <p id="controller-t">
+            <span class="ref-title">controllerT: </span>
+            <span class="ref-body">game time in seconds between two subsequent calls of the update() function
+            (game time is measured with respect to the timer in the top left corner of game screen).</span>
          </p>
 
-         <p id="cannon-l">
-            <span class="ref-title">cannonL: </span>
-            <span class="ref-body"></span>
+         <p id="cannon-min-angle">
+            <span class="ref-title">cannonMinAngle: </span>
+            <span class="ref-body">minimum cannon angle.</span>
+         </p>
+
+         <p id="cannon-max-angle">
+            <span class="ref-title">cannonMaxAngle: </span>
+            <span class="ref-body">maximum cannon angle.</span>
          </p>
       </div>
    </body>

@@ -10,7 +10,7 @@
          src="https://code.jquery.com/jquery-3.1.1.slim.min.js"
          integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc="
          crossorigin="anonymous"></script>
-         
+
       <script src="script.js"></script>
 
       <style>
@@ -128,8 +128,14 @@
       <div id="wrapper">
          <canvas id="canvas" width="800" height="240"></canvas><div id="spawners">
          </div>
-         <textarea id="code">// Type your code here, and press apply to run it
-this.shoot();</textarea>
+         <textarea id="code">setup: function () {
+   // Here goes your setup code...
+},
+
+update: function () {
+   // ...and here goes your update code (this function is called every frame!)
+}
+         </textarea>
          <div id="buttons">
             <div id="left">
                <span id="pause" class="btn">Play</span>
