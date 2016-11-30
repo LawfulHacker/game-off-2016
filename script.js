@@ -54,6 +54,22 @@ var spawners = [
    },
 
    {
+      id: "exp_amount_air",
+      name: "Exp_Air",
+      desc: "the enemy spawn frequency increases exponentially over time",
+      spawnTimeMin: 0,
+      spawnTimeMax: 3,
+      spawnTimeT: 50,
+      speed: 60,
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
+      },
+      spawn: function ( l ) {
+        return [ canvas.width + gfx_enemyR, 40, 60 ];
+      }
+   },
+
+   {
       id: "exp_all",
       name: "Exp_All",
       desc: "the enemy spawn frequency and speed increases exponentially over time",
@@ -76,6 +92,7 @@ var spawners = [
       name: "Packs",
       desc: "enemies are spawned in packs",
       packSize: 0,
+      spawnedPacks: 0,
       air: 0,
       packSizeMin: 1,
       packSizeMax: 10,
@@ -86,11 +103,48 @@ var spawners = [
         if ( this.packSize > 0 && l.time - l.lastSpawn > this.packT ) { this.packSize--; return 1; }
         else if ( l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTime ) {
            this.packSize = this.packSizeMax - Math.floor ( (this.packSizeMax - this.packSizeMin) * Math.exp ( -l.time / this.packSizeT ) );
-           this.air = (l.time % 10) > 5;
+           this.spawnedPacks++;
+           this.air = (this.spawnedPacks % 4) == 0;
         }
       },
       spawn: function ( l ) {
         return [ canvas.width + gfx_enemyR, this.air * 40, 60 ];
+      }
+   },
+
+   {
+      id: "air_var",
+      name: "Air",
+      desc: "enemies fly at different heights",
+      spawnTimeMin: 0,
+      spawnTimeMax: 3,
+      spawnTimeT: 50,
+      speed: 60,
+      condition: function ( l ) {
+        return l.lastSpawn < 0 || l.time - l.lastSpawn > this.spawnTimeMin + (this.spawnTimeMax - this.spawnTimeMin) * Math.exp ( -l.time / this.spawnTimeT );
+      },
+      spawn: function ( l ) {
+        return [ canvas.width + gfx_enemyR, 30 + 30 * Math.sin((l.time % 5) / 5), 60 ];
+      }
+   },
+
+   {
+      id: "rand",
+      name: "Rand",
+      desc: "many random things",
+      spawnChanceBase: 0.005,
+      spawnChanceMax: 0.025,
+      spawnChanceT: 50,
+      speedBase: 50,
+      speedDelta: 30,
+      speedT: 50,
+      condition: function ( l ) {
+         return Math.random() < this.spawnChanceMax - ( this.spawnChanceMax - this.spawnChanceBase ) * Math.exp ( -l.time / this.spawnChanceT );
+      },
+      spawn: function ( l ) {
+         var h = [ 0, 30, 60 ];
+         return [ canvas.width + gfx_enemyR, h [ Math.floor(Math.random() * 3) ],
+            this.speedBase + this.speedDelta * ( 1 - Math.exp ( -l.time / this.speedT ) ) * Math.random() ];
       }
    }
 ];
